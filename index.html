@@ -1,0 +1,125 @@
+<!-- 
+
+20131018
+Live Web
+Brain Blowing
+
+Kang Peng
+ktp242@nyu.edu
+
+1) set up a index.html
+2) set up getUserMedia
+3) set up PeerJS
+
+20131019
+4) set up the function to start a local webcam video
+5) not sure what happened but the function call can't make the two peers connected at the same time
+
+ -->
+
+<html>
+ <head>
+     <script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>	
+     <script src="/socket.io/socket.io.js"></script>
+     <script type="text/javascript">
+
+     
+     // the mother function init
+     var init = function() {
+
+
+     // set up the local video object
+     var myStream = null;
+     // way to get the video depends on different browsers 
+     window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
+     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+     
+    
+     // if user say yes to the permission to open the camera
+     if (navigator.getUserMedia) 
+     {
+	            navigator.getUserMedia({video: true, audio: true}, 
+	                      function(stream) {
+				                    myStream = stream;
+				                    // where the stream to be shown in the HTML
+                                    var myVideo = document.getElementById('myVideo');
+				                    // fill the stream into video tag
+				                    myVideo.src = window.URL.createObjectURL(stream) || stream;
+				                    myVideo.play();			                                            }, 
+			              function(err) {
+				                    console.log('Failed to get local stream' ,err);
+	                                                 }
+	                                  );
+     }
+
+
+     // connect to the server
+     var socket = io.connect('http://ec2-54-200-23-228.us-west-2.compute.amazonaws.com:8080/');
+
+     // register a peer API key @http://peerjs.com/peerserver
+     var peer = new Peer({key: '0bhq54ovkg9zfr'});
+
+     // set up our peer ID object
+     var myPeerId = null;
+
+     // once connected send the message and peer ID
+     socket.on('connect', function() {
+				console.log("Connected");
+				// When we connect, if we have a peer ID, send it out	
+					if (myPeerId != null) {
+						console.log("peer id is not null, sending it");
+						socket.emit('myPeerId',myPeerId);
+					}
+			});
+
+
+     // get a peer ID
+     peer.on('open', function(id) {
+             console.log('My peer ID is: ' + id);
+             myPeerId = id;
+             console.log("sending out my peer id");
+	         socket.emit('myPeerId',myPeerId);
+     });
+
+
+     // Receive other folks' streams
+	 socket.on('peerId', function (peerId) {
+			    console.log("Got a new peer: " + peerId);
+			    // Call them with our stream
+				console.log("Calling peer: " + peerId);						
+				var call = peer.call(peerId, myStream);
+				call.on('remoteStream', function(remoteStream) {
+				console.log("Got a remote stream");
+				document.getElementById('enemyVideo').src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					});
+				});
+
+     
+     // receive a call
+     peer.on('call', function(incomingCall) {
+	      console.log("Got a call!");
+	      // Answer the call with our stream from getUserMedia
+	      incomingCall.answer(myStream); 
+	      // we receive a getUserMedia stream from the enemy 
+	      incomingCall.on('stream', function(remoteStream) {
+		  // And attach it to a video object
+		        var enemyVideo = document.getElementById('enemyVideo');
+		        enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+		        enemyVideo.play();
+	      });
+     });
+
+    };	
+
+     </script>
+ </head>
+
+ <body onload="init();">
+
+ <video id="myVideo" width="320" height="240" style="border:1px solid #000000;"> </video>
+ <video id="enemyVideo" width="320" height="240" style="border:1px solid #FF0000;"></video>
+
+
+
+ </body>
+</html>
