@@ -15,6 +15,13 @@ ktp242@nyu.edu
 4) set up the function to start a local webcam video
 5) not sure what happened but the function call can't make the two peers connected at the same time
 
+20131020
+6) tried using previous peer but not work... so removed it 
+
+20131021
+7) tried out Tarana's advice to put 2 peer.on() and myPeerID and peer into navigator.getUserMedia instead of putting them indepently outside AND it worked!!
+Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defined ) at line 109 as well. However it didn't affect the execution.
+
  -->
 
 <html>
@@ -27,9 +34,10 @@ ktp242@nyu.edu
      // the mother function init
      var init = function() {
 
+    
 
      // set up the local video object
-     var myStream = null;
+     var myStream;
      // way to get the video depends on different browsers 
      window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
@@ -45,7 +53,43 @@ ktp242@nyu.edu
                                     var myVideo = document.getElementById('myVideo');
 				                    // fill the stream into video tag
 				                    myVideo.src = window.URL.createObjectURL(stream) || stream;
-				                    myVideo.play();			                                            }, 
+				                    myVideo.play();
+
+
+ 	 // register a peer API key @http://peerjs.com/peerserver
+     peer = new Peer({key: '0bhq54ovkg9zfr', debug: 2});
+
+     // set up our peer ID object
+     myPeerId = null; 
+
+     // get a peer ID
+     peer.on('open', function(id) {
+             console.log('My peer ID is: ' + id);
+             myPeerId = id;
+             console.log("sending out my peer id");
+	         socket.emit('myPeerId',myPeerId);
+     });
+
+    
+     // answer a call
+     peer.on('call', function(incomingCall) {
+	      console.log("Got a call!");
+	      // Answer the call with our stream from getUserMedia
+	      incomingCall.answer(myStream);
+	      // we receive a getUserMedia stream from the enemy 
+	      incomingCall.on('stream', function(remoteStream) {
+		  // And attach it to a video object
+		  if (window.existingCall) {
+                window.existingCall.close();
+                }
+		        var enemyVideo = document.getElementById('enemyVideo');
+		        enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+		        enemyVideo.play();
+	      });
+     });
+
+
+				                    		                                            }, 
 			              function(err) {
 				                    console.log('Failed to get local stream' ,err);
 	                                                 }
@@ -56,11 +100,7 @@ ktp242@nyu.edu
      // connect to the server
      var socket = io.connect('http://ec2-54-200-23-228.us-west-2.compute.amazonaws.com:8080/');
 
-     // register a peer API key @http://peerjs.com/peerserver
-     var peer = new Peer({key: '0bhq54ovkg9zfr'});
-
-     // set up our peer ID object
-     var myPeerId = null;
+     
 
      // once connected send the message and peer ID
      socket.on('connect', function() {
@@ -73,43 +113,24 @@ ktp242@nyu.edu
 			});
 
 
-     // get a peer ID
-     peer.on('open', function(id) {
-             console.log('My peer ID is: ' + id);
-             myPeerId = id;
-             console.log("sending out my peer id");
-	         socket.emit('myPeerId',myPeerId);
-     });
-
-
-     // Receive other folks' streams
-	 socket.on('peerId', function (peerId) {
-			    console.log("Got a new peer: " + peerId);
+     // call
+	 socket.on('peerId', function (newPeerId) {
+			    console.log("Got a new peer: " + newPeerId);
 			    // Call them with our stream
-				console.log("Calling peer: " + peerId);						
-				var call = peer.call(peerId, myStream);
-				call.on('remoteStream', function(remoteStream) {
+				console.log("Calling peer: " + newPeerId);						
+				var call = peer.call(newPeerId, myStream);
+				call.on('stream', function(stream) {
 				console.log("Got a remote stream");
-				document.getElementById('enemyVideo').src = window.URL.createObjectURL(remoteStream) || remoteStream;
-					});
-				});
-
-     
-     // receive a call
-     peer.on('call', function(incomingCall) {
-	      console.log("Got a call!");
-	      // Answer the call with our stream from getUserMedia
-	      incomingCall.answer(myStream); 
-	      // we receive a getUserMedia stream from the enemy 
-	      incomingCall.on('stream', function(remoteStream) {
-		  // And attach it to a video object
-		        var enemyVideo = document.getElementById('enemyVideo');
-		        enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+				if (window.existingCall) {
+                window.existingCall.close();
+                }
+				var enemyVideo = document.getElementById('enemyVideo');
+		        enemyVideo.src = window.URL.createObjectURL(stream) || stream;
 		        enemyVideo.play();
-	      });
-     });
+				});
+			});
 
-    };	
+     }
 
      </script>
  </head>

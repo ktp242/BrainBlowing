@@ -47,17 +47,20 @@ io.sockets.on('connection',
       console.log("We have a new client: " + socket.id);
   
       // retrieve peer ID from the client
-      socket.on('myPeerId', function(myPeerId) {
-			console.log("Received: 'my peerId' " + myPeerId);
+      socket.on('myPeerId', function(newPeerId) {
+			console.log("Received: 'my peerId' " + newPeerId);
 			// We can save this in the socket object if we like
-			socket.peerId = myPeerId;
+			socket.peerId = newPeerId;
 			console.log("Saved: " + socket.peerId);
 			// We can loop through these if we like
 			for (var i  = 0; i < io.sockets.clients().length; i++) {
 				console.log("loop: " + i + " " + io.sockets.clients()[i].peerId);
-			}			
+			}
+			// get previous peer ID			
+			previousPeerId = io.sockets.clients()[io.sockets.clients.length-1].peerId;
+			console.log("this is previous: " + previousPeerId);
 			// emit 'peerId' with my peer id
-			io.sockets.emit('peerId',myPeerId);
+			socket.broadcast.emit('peerId',newPeerId,previousPeerId);
 		});
 
   // Once the client has left
