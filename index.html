@@ -22,19 +22,35 @@ ktp242@nyu.edu
 7) tried out Tarana's advice to put 2 peer.on() and myPeerID and peer into navigator.getUserMedia instead of putting them indepently outside AND it worked!!
 Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defined ) at line 109 as well. However it didn't affect the execution.
 
- -->
+20131110
+8) import filterTest functions
+
+20131126
+9) the filter works on only applied to one (myVideo or enemyVideo) canvas. Shawn suggested me to build the same but two separat functions to solve it. In consequence, in the way, the myVideo will be executed but enemyVideo.
+
+20131127
+10) figure out the problem is the enemyTexture should get the image data from the 0, 0 at enemy canvas. The coordination is local not global.
+
+-->
 
 <html>
- <head>
-     <script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>	
-     <script src="/socket.io/socket.io.js"></script>
-     <script type="text/javascript">
+<head>
+	<script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>	
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
 
-     
+    var hasVideo=false;	
+    var myVideo=null;
+    var enemyVideo=null;
+    var threshold = 2;
+    var map = [];
+    var omap = []; 
+    var videoBit;
+    var texture;
+
      // the mother function init
      var init = function() {
 
-    
 
      // set up the local video object
      var myStream;
@@ -42,105 +58,277 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
      window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
      
-    
+
      // if user say yes to the permission to open the camera
      if (navigator.getUserMedia) 
      {
-	            navigator.getUserMedia({video: true, audio: true}, 
-	                      function(stream) {
-				                    myStream = stream;
+     	navigator.getUserMedia({video: true, audio: true}, 
+     		function(stream) {
+           myStream = stream;
+           myVideo = document.getElementById('myVideo');
+           hasVideo=true;
 				                    // where the stream to be shown in the HTML
-                                    var myVideo = document.getElementById('myVideo');
+				                    //var myVideo = document.getElementById('myVideo');
 				                    // fill the stream into video tag
 				                    myVideo.src = window.URL.createObjectURL(stream) || stream;
 				                    myVideo.play();
 
 
- 	 // register a peer API key @http://peerjs.com/peerserver
-     peer = new Peer({key: '0bhq54ovkg9zfr', debug: 2});
+ 	   // register a peer API key @http://peerjs.com/peerserver
+ 	   peer = new Peer({key: '0bhq54ovkg9zfr', debug: 2});
 
      // set up our peer ID object
      myPeerId = null; 
 
      // get a peer ID
      peer.on('open', function(id) {
-             console.log('My peer ID is: ' + id);
-             myPeerId = id;
-             console.log("sending out my peer id");
-	         socket.emit('myPeerId',myPeerId);
+     	console.log('My peer ID is: ' + id);
+     	myPeerId = id;
+     	console.log("sending out my peer id");
+     	socket.emit('myPeerId',myPeerId);
      });
 
-    
+
      // answer a call
      peer.on('call', function(incomingCall) {
-	      console.log("Got a call!");
+     	console.log("Got a call!");
 	      // Answer the call with our stream from getUserMedia
 	      incomingCall.answer(myStream);
 	      // we receive a getUserMedia stream from the enemy 
 	      incomingCall.on('stream', function(remoteStream) {
 		  // And attach it to a video object
 		  if (window.existingCall) {
-                window.existingCall.close();
-                }
-		        var enemyVideo = document.getElementById('enemyVideo');
-		        enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
-		        enemyVideo.play();
-	      });
+		  	window.existingCall.close();
+		  }
+      enemyVideo = document.getElementById('enemyVideo');
+		  enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+		  enemyVideo.play();
+      console.log("Playing enemyVideo");
+       setInterval(drawEnemyScreen, 33);
+		    });       
+      });
+     }, 
+
+     function(err) {
+     console.log('Failed to get local stream' ,err);
      });
-
-
-				                    		                                            }, 
-			              function(err) {
-				                    console.log('Failed to get local stream' ,err);
-	                                                 }
-	                                  );
-     }
+   }
 
 
      // connect to the server
      var socket = io.connect('http://ec2-54-200-23-228.us-west-2.compute.amazonaws.com:8080/');
 
      
-
      // once connected send the message and peer ID
      socket.on('connect', function() {
-				console.log("Connected");
+     	console.log("Connected");
 				// When we connect, if we have a peer ID, send it out	
-					if (myPeerId != null) {
-						console.log("peer id is not null, sending it");
-						socket.emit('myPeerId',myPeerId);
-					}
+				if (myPeerId != null) {
+					console.log("peer id is not null, sending it");
+					socket.emit('myPeerId',myPeerId);
+				}
 			});
 
 
      // call
-	 socket.on('peerId', function (newPeerId) {
-			    console.log("Got a new peer: " + newPeerId);
+     socket.on('peerId', function (newPeerId) {
+     	console.log("Got a new peer: " + newPeerId);
 			    // Call them with our stream
-				console.log("Calling peer: " + newPeerId);						
-				var call = peer.call(newPeerId, myStream);
-				call.on('stream', function(stream) {
-				console.log("Got a remote stream");
-				if (window.existingCall) {
-                window.existingCall.close();
-                }
-				var enemyVideo = document.getElementById('enemyVideo');
-		        enemyVideo.src = window.URL.createObjectURL(stream) || stream;
-		        enemyVideo.play();
-				});
-			});
+			    console.log("Calling peer: " + newPeerId);						
+			    var call = peer.call(newPeerId, myStream);
+			    call.on('stream', function(stream) {
+			    	console.log("Got a remote stream");
+			    	if (window.existingCall) {
+			    		window.existingCall.close();
+			    	}
+            enemyVideo = document.getElementById('enemyVideo');
+			    	enemyVideo.src = window.URL.createObjectURL(stream) || stream;
+			    	enemyVideo.play();
+            setInterval(drawEnemyScreen, 33);            
+			    });
+       });
 
-     }
+     function drawEnemyScreen(){
 
-     </script>
- </head>
+      // section of enemy's canvas and put video into it
+      enemyCanvas = document.getElementById("enemyCanvas");
+      enemyContext = enemyCanvas.getContext("2d");
+      enemyContext.fillStyle = '#ffffaa';
 
- <body onload="init();">
+      enemyContext.drawImage(enemyVideo , 0, 0, 640, 640, 0, 0, 320, 320);
 
- <video id="myVideo" width="320" height="240" style="border:1px solid #000000;"> </video>
- <video id="enemyVideo" width="320" height="240" style="border:1px solid #FF0000;"></video>
+      enemySphere = document.getElementById("enemySphere");
+      enemySphereCtx = enemySphere.getContext("2d");
+
+      var enemyVideoBit = enemySphereCtx.getImageData(360, 0, 240,240);
+      var enemyTexture = enemyContext.getImageData(40, 0, 240,240);
+
+      var spherizeEne = function(px,py,bit) {
+        var x = px-bit.width/2;
+        var y = py-bit.height/2;
+        var r = Math.sqrt(x*x+y*y);
+        var maxr = bit.width/threshold;
+        if (r>maxr) return {
+          'x':px,
+          'y':py
+        }
+        var a = Math.atan2(y,x);
+        var k = (r/maxr)*(r/maxr)*0.5+0.5;
+        var dx = Math.cos(a)*r*k;
+        var dy = Math.sin(a)*r*k;
+        return {
+          'x': dx+bit.width/2,
+          'y': dy+bit.height/2
+        }
+      } 
+
+     var execEnemy = function(bit, tex, themap) {
+      var height = bit.height;
+      var width = bit.width;
+      var colorat = function(x,y,channel) {
+        return tex.data[(x+y*height)*4+channel];
+      }
+      for (var j=0; j<height; j++) {
+        for (var i=0; i<width; i++) {
+          var u = themap[(i+j*height)*2];
+          var v = themap[(i+j*height)*2+1];
+          var x = Math.floor(u);
+          var y = Math.floor(v);
+          var kx = u-x;
+          var ky = v-y;
+          for (var c=0; c<4; c++) {
+            bit.data[(i+j*height)*4+c] =
+            (colorat(x,y  ,c)*(1-kx) + colorat(x+1,y  ,c)*kx) * (1-ky) +
+            (colorat(x,y+1,c)*(1-kx) + colorat(x+1,y+1,c)*kx) * (ky);
+          }
+        }
+      }
+    }
+
+    var setTranslateEne = function(bit,themap) {
+      for (var y=0; y<bit.height; y++) {
+        for (var x=0; x<bit.width; x++) {
+          var t = spherizeEne(x,y,bit);
+          themap[(x+y*bit.height)*2+0] = Math.max(Math.min(t.x,bit.height-1),0);
+          themap[(x+y*bit.height)*2+1] = Math.max(Math.min(t.y,bit.height-1),0);
+        }
+      }
+    }
+    
+    setTranslateEne(enemyVideoBit,omap);
+    execEnemy(enemyVideoBit,enemyTexture,omap);
+    enemySphereCtx.putImageData(enemyVideoBit, 0 ,0);
+
+    console.log("draw enemy screen works");
+
+  }
+
+  function drawScreen(){
+
+    if(!hasVideo)
+      return;
+
+      // section of my canvas and put video into it
+      myCanvas = document.getElementById("myCanvas");
+      context = myCanvas.getContext("2d");
+      //Background
+      context.fillStyle = '#ffffaa'; 
+      
+
+     // play video in canvas at position x=0, y=0
+     context.drawImage(myVideo , 0, 0, 640, 640, 0, 0, 320, 320);
+     
+     // the sphere canvas
+     mySphere = document.getElementById("mySphere");
+     mySphereCtx = mySphere.getContext("2d");
 
 
+     // the data from context and mySphereCtx, which working with exec() and translate()
+     videoBit = mySphereCtx.getImageData(40, 0, 240,240);
+     texture = context.getImageData(40, 0, 240,240);
 
- </body>
+
+     // the spherize effect manipulator
+     var spherize = function(px,py,bit) {
+      var x = px-bit.width/2;
+      var y = py-bit.height/2;
+      var r = Math.sqrt(x*x+y*y);
+      var maxr = bit.width/threshold;
+      if (r>maxr) return {
+        'x':px,
+        'y':py
+      }
+      var a = Math.atan2(y,x);
+      var k = (r/maxr)*(r/maxr)*0.5+0.5;
+      var dx = Math.cos(a)*r*k;
+      var dy = Math.sin(a)*r*k;
+      return {
+        'x': dx+bit.width/2,
+        'y': dy+bit.height/2
+      }
+    }
+
+    
+    // put the adjusted data into the contour
+    var exec = function(bit, tex, themap) {
+      var height = bit.height;
+      var width = bit.width;
+      var colorat = function(x,y,channel) {
+        return tex.data[(x+y*height)*4+channel];
+      }
+      for (var j=0; j<height; j++) {
+        for (var i=0; i<width; i++) {
+          var u = themap[(i+j*height)*2];
+          var v = themap[(i+j*height)*2+1];
+          var x = Math.floor(u);
+          var y = Math.floor(v);
+          var kx = u-x;
+          var ky = v-y;
+          for (var c=0; c<4; c++) {
+            bit.data[(i+j*height)*4+c] =
+            (colorat(x,y  ,c)*(1-kx) + colorat(x+1,y  ,c)*kx) * (1-ky) +
+            (colorat(x,y+1,c)*(1-kx) + colorat(x+1,y+1,c)*kx) * (ky);
+          }
+        }
+      }
+    }
+
+    // grab pixel data after manipulator adjust it and map it  
+    var setTranslate = function(bit,themap) {
+      for (var y=0; y<bit.height; y++) {
+        for (var x=0; x<bit.width; x++) {
+          var t = spherize(x,y,bit);
+          themap[(x+y*bit.height)*2+0] = Math.max(Math.min(t.x,bit.height-1),0);
+          themap[(x+y*bit.height)*2+1] = Math.max(Math.min(t.y,bit.height-1),0);
+        }
+      }
+    }
+
+
+    setTranslate(videoBit,map);
+    exec(videoBit,texture,map);
+    mySphereCtx.putImageData(videoBit, 0 ,0);
+    console.log("drawScreen works");
+
+  }
+
+  setInterval(drawScreen, 33);
+
+}
+
+</script>
+</head>
+
+<body onload="init();">
+
+  <canvas id="myCanvas" width="320" height="240"></canvas>
+  <canvas id="enemyCanvas" width="320" height="240"></canvas>
+
+  <canvas id="mySphere" width= "320" height= "240" style = "position: absolute; left:50; top: 10"></canvas>
+  <canvas id="enemySphere" width= "320" height= "240" style = "position: absolute; left:370; top: 10"></canvas>
+
+  <video id="myVideo" width="320" height="240" style="border:1px solid #000000;"> </video>
+  <video id="enemyVideo" width="320" height="240" style="border:1px solid #000000;"> </video>
+
+</body>
 </html>
