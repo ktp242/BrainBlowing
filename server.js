@@ -11,6 +11,9 @@ ktp242@nyu.edu
 1) set up a server.js
 2) set up the function to receive peer ID from clients
 
+20131210
+3) added keyboard control functions
+
 */
 
 // HTTP Portion
@@ -62,6 +65,11 @@ io.sockets.on('connection',
 			// emit 'peerId' with my peer id
 			socket.broadcast.emit('peerId',newPeerId,previousPeerId);
 		});
+
+      socket.on('doKeyDown', function (changeNumber) {
+			console.log(changeNumber);
+		});
+
 
   // Once the client has left
 	    socket.on ('disconnect', function() {

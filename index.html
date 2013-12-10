@@ -31,6 +31,9 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
 20131127
 10) figure out the problem is the enemyTexture should get the image data from the 0, 0 at enemy canvas. The coordination is local not global.
 
+20131210
+11) added keyboard control functions
+
 -->
 
 <html>
@@ -42,11 +45,12 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
     var hasVideo=false;	
     var myVideo=null;
     var enemyVideo=null;
-    var threshold = 2;
+    var threshold;
     var map = [];
     var omap = []; 
     var videoBit;
     var texture;
+    var changeNumber=0.5;
 
      // the mother function init
      var init = function() {
@@ -173,7 +177,7 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
           'y':py
         }
         var a = Math.atan2(y,x);
-        var k = (r/maxr)*(r/maxr)*0.5+0.5;
+        var k = (r/maxr)*(r/maxr)*changeNumber+(1-changeNumber);
         var dx = Math.cos(a)*r*k;
         var dy = Math.sin(a)*r*k;
         return {
@@ -259,7 +263,7 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
         'y':py
       }
       var a = Math.atan2(y,x);
-      var k = (r/maxr)*(r/maxr)*0.5+0.5;
+      var k = (r/maxr)*(r/maxr)*changeNumber+(1-changeNumber);
       var dx = Math.cos(a)*r*k;
       var dy = Math.sin(a)*r*k;
       return {
@@ -313,6 +317,36 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
   }
 
   setInterval(drawScreen, 33);
+
+// keyboard control functions
+
+  function doKeyDown(e){
+   if (e.keyCode == 87){
+    changeNumber = changeNumber + 0.02;
+    console.log(changeNumber);     
+  }else{
+   if (e.keyCode == 83){
+    changeNumber = changeNumber - 0.02;
+    console.log(changeNumber);     
+  }
+}
+socket.emit('doKeyDown', changeNumber);
+}
+
+window.addEventListener( "keydown", doKeyDown, false );
+
+
+  function myTimer(){
+  setInterval(function (){
+    if (changeNumber>0){
+      changeNumber = changeNumber - 0.015;
+    }
+    console.log(changeNumber);
+  },
+  500);
+}
+
+myTimer();
 
 }
 
