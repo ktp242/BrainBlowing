@@ -66,8 +66,9 @@ io.sockets.on('connection',
 			socket.broadcast.emit('peerId',newPeerId,previousPeerId);
 		});
 
-      socket.on('doKeyDown', function (changeNumber) {
-			console.log(changeNumber);
+      socket.on('doKeyDown', function (youWereBlown) {
+			console.log(youWereBlown);
+			socket.emit('enemyAttack', youWereBlown);		
 		});
 
 

@@ -32,25 +32,26 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
 10) figure out the problem is the enemyTexture should get the image data from the 0, 0 at enemy canvas. The coordination is local not global.
 
 20131210
-11) added keyboard control functions
-
+11) added keyboard functions
 -->
 
 <html>
 <head>
-	<script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>	
-	<script src="/socket.io/socket.io.js"></script>
-	<script type="text/javascript">
+        <script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>        
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="text/javascript">
 
-    var hasVideo=false;	
+    var hasVideo=false;        
     var myVideo=null;
     var enemyVideo=null;
-    var threshold;
+    var threshold = 2;
     var map = [];
     var omap = []; 
     var videoBit;
     var texture;
-    var changeNumber=0.5;
+    var changeNumber = 0;
+    var blow = 0;
+    var enemyIsBlown = 0;
 
      // the mother function init
      var init = function() {
@@ -66,50 +67,50 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
      // if user say yes to the permission to open the camera
      if (navigator.getUserMedia) 
      {
-     	navigator.getUserMedia({video: true, audio: true}, 
-     		function(stream) {
+             navigator.getUserMedia({video: true, audio: true}, 
+                     function(stream) {
            myStream = stream;
            myVideo = document.getElementById('myVideo');
            hasVideo=true;
-				                    // where the stream to be shown in the HTML
-				                    //var myVideo = document.getElementById('myVideo');
-				                    // fill the stream into video tag
-				                    myVideo.src = window.URL.createObjectURL(stream) || stream;
-				                    myVideo.play();
+                                                    // where the stream to be shown in the HTML
+                                                    //var myVideo = document.getElementById('myVideo');
+                                                    // fill the stream into video tag
+                                                    myVideo.src = window.URL.createObjectURL(stream) || stream;
+                                                    myVideo.play();
 
 
- 	   // register a peer API key @http://peerjs.com/peerserver
- 	   peer = new Peer({key: '0bhq54ovkg9zfr', debug: 2});
+            // register a peer API key @http://peerjs.com/peerserver
+            peer = new Peer({key: '0bhq54ovkg9zfr', debug: 2});
 
      // set up our peer ID object
      myPeerId = null; 
 
      // get a peer ID
      peer.on('open', function(id) {
-     	console.log('My peer ID is: ' + id);
-     	myPeerId = id;
-     	console.log("sending out my peer id");
-     	socket.emit('myPeerId',myPeerId);
+             console.log('My peer ID is: ' + id);
+             myPeerId = id;
+             console.log("sending out my peer id");
+             socket.emit('myPeerId',myPeerId);
      });
 
 
      // answer a call
      peer.on('call', function(incomingCall) {
-     	console.log("Got a call!");
-	      // Answer the call with our stream from getUserMedia
-	      incomingCall.answer(myStream);
-	      // we receive a getUserMedia stream from the enemy 
-	      incomingCall.on('stream', function(remoteStream) {
-		  // And attach it to a video object
-		  if (window.existingCall) {
-		  	window.existingCall.close();
-		  }
+             console.log("Got a call!");
+              // Answer the call with our stream from getUserMedia
+              incomingCall.answer(myStream);
+              // we receive a getUserMedia stream from the enemy 
+              incomingCall.on('stream', function(remoteStream) {
+                  // And attach it to a video object
+                  if (window.existingCall) {
+                          window.existingCall.close();
+                  }
       enemyVideo = document.getElementById('enemyVideo');
-		  enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
-		  enemyVideo.play();
+                  enemyVideo.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+                  enemyVideo.play();
       console.log("Playing enemyVideo");
        setInterval(drawEnemyScreen, 33);
-		    });       
+                    });       
       });
      }, 
 
@@ -125,31 +126,31 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
      
      // once connected send the message and peer ID
      socket.on('connect', function() {
-     	console.log("Connected");
-				// When we connect, if we have a peer ID, send it out	
-				if (myPeerId != null) {
-					console.log("peer id is not null, sending it");
-					socket.emit('myPeerId',myPeerId);
-				}
-			});
+             console.log("Connected");
+                                // When we connect, if we have a peer ID, send it out        
+                                if (myPeerId != null) {
+                                        console.log("peer id is not null, sending it");
+                                        socket.emit('myPeerId',myPeerId);
+                                }
+                        });
 
 
      // call
      socket.on('peerId', function (newPeerId) {
-     	console.log("Got a new peer: " + newPeerId);
-			    // Call them with our stream
-			    console.log("Calling peer: " + newPeerId);						
-			    var call = peer.call(newPeerId, myStream);
-			    call.on('stream', function(stream) {
-			    	console.log("Got a remote stream");
-			    	if (window.existingCall) {
-			    		window.existingCall.close();
-			    	}
+             console.log("Got a new peer: " + newPeerId);
+                            // Call them with our stream
+                            console.log("Calling peer: " + newPeerId);                                                
+                            var call = peer.call(newPeerId, myStream);
+                            call.on('stream', function(stream) {
+                                    console.log("Got a remote stream");
+                                    if (window.existingCall) {
+                                            window.existingCall.close();
+                                    }
             enemyVideo = document.getElementById('enemyVideo');
-			    	enemyVideo.src = window.URL.createObjectURL(stream) || stream;
-			    	enemyVideo.play();
+                                    enemyVideo.src = window.URL.createObjectURL(stream) || stream;
+                                    enemyVideo.play();
             setInterval(drawEnemyScreen, 33);            
-			    });
+                            });
        });
 
      function drawEnemyScreen(){
@@ -177,6 +178,10 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
           'y':py
         }
         var a = Math.atan2(y,x);
+        if (enemyIsBlown == 1){
+         changeNumber = changeNumber + 0.02;
+         enemyIsBlown = 0;
+        }
         var k = (r/maxr)*(r/maxr)*changeNumber+(1-changeNumber);
         var dx = Math.cos(a)*r*k;
         var dy = Math.sin(a)*r*k;
@@ -263,7 +268,7 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
         'y':py
       }
       var a = Math.atan2(y,x);
-      var k = (r/maxr)*(r/maxr)*changeNumber+(1-changeNumber);
+      var k = (r/maxr)*(r/maxr)*0+1;
       var dx = Math.cos(a)*r*k;
       var dy = Math.sin(a)*r*k;
       return {
@@ -318,35 +323,34 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
 
   setInterval(drawScreen, 33);
 
-// keyboard control functions
-
+   // key down function
   function doKeyDown(e){
    if (e.keyCode == 87){
-    changeNumber = changeNumber + 0.02;
-    console.log(changeNumber);     
-  }else{
-   if (e.keyCode == 83){
-    changeNumber = changeNumber - 0.02;
-    console.log(changeNumber);     
+    myblow = 1;
+    //console.log(blow);    
   }
-}
-socket.emit('doKeyDown', changeNumber);
-}
+    socket.emit('doKeyDown', myblow);
+  }
 
 window.addEventListener( "keydown", doKeyDown, false );
 
-
-  function myTimer(){
+function enemyTimer(){
   setInterval(function (){
     if (changeNumber>0){
       changeNumber = changeNumber - 0.015;
     }
-    console.log(changeNumber);
+    //console.log(changeNumber);
   },
   500);
 }
 
-myTimer();
+enemyTimer();
+
+socket.on('enemyAttack', function (youWereBlown) {
+  console.log("got youWereBlown");
+  enemyIsBlown = youWereBlown;
+});
+
 
 }
 
