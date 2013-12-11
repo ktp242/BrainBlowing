@@ -49,9 +49,11 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
     var omap = []; 
     var videoBit;
     var texture;
-    var changeNumber = 0;
+    var EneChangeNumber = 0;
     var blow = 0;
     var enemyIsBlown = 0;
+    var underAttack = 0;
+    var changeNumber = 0;
 
      // the mother function init
      var init = function() {
@@ -179,10 +181,10 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
         }
         var a = Math.atan2(y,x);
         if (enemyIsBlown == 1){
-         changeNumber = changeNumber + 0.02;
+         EneChangeNumber = EneChangeNumber + 0.02;
          enemyIsBlown = 0;
         }
-        var k = (r/maxr)*(r/maxr)*changeNumber+(1-changeNumber);
+        var k = (r/maxr)*(r/maxr)*EneChangeNumber+(1-EneChangeNumber);
         var dx = Math.cos(a)*r*k;
         var dy = Math.sin(a)*r*k;
         return {
@@ -268,7 +270,12 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
         'y':py
       }
       var a = Math.atan2(y,x);
-      var k = (r/maxr)*(r/maxr)*0+1;
+
+      if (underAttack == 1){
+        changeNumber = changeNumber + 0.02;
+        underAttack = 0;
+      }
+      var k = (r/maxr)*(r/maxr)*changeNumber+(1-changeNumber);
       var dx = Math.cos(a)*r*k;
       var dy = Math.sin(a)*r*k;
       return {
@@ -316,8 +323,16 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
 
     setTranslate(videoBit,map);
     exec(videoBit,texture,map);
+
+  
+  if(changeNumber < 1){
     mySphereCtx.putImageData(videoBit, 0 ,0);
+  }else{
+     mySphereCtx.fillStyle="red";
+     mySphereCtx.fill();
+   }
     console.log("drawScreen works");
+  
 
   }
 
@@ -329,27 +344,34 @@ Still don't know why and I got a (Uncaught ReferenceError: myPeerId is not defin
     myblow = 1;
     //console.log(blow);    
   }
-    socket.emit('doKeyDown', myblow);
+    socket.emit('attacking', myblow);
   }
 
 window.addEventListener( "keydown", doKeyDown, false );
 
 function enemyTimer(){
   setInterval(function (){
-    if (changeNumber>0){
-      changeNumber = changeNumber - 0.015;
+    if (EneChangeNumber>0){
+      EneChangeNumber = EneChangeNumber - 0.02;
     }
-    //console.log(changeNumber);
+    //console.log(EneChangeNumber);
   },
   500);
 }
 
 enemyTimer();
 
-socket.on('enemyAttack', function (youWereBlown) {
-  console.log("got youWereBlown");
-  enemyIsBlown = youWereBlown;
+socket.on('enemyAttack', function (enemyAttack) {
+  //console.log("got enemyAttack");
+  enemyIsBlown = enemyAttack;
+  underAttack= enemyAttack;
+
 });
+
+// socket.on('Attacked', function (underAttack) {
+// console.log("Under attack");
+// underAttack = 1;
+// });
 
 
 }
@@ -359,8 +381,8 @@ socket.on('enemyAttack', function (youWereBlown) {
 
 <body onload="init();">
 
-  <canvas id="myCanvas" width="320" height="240"></canvas>
-  <canvas id="enemyCanvas" width="320" height="240"></canvas>
+  <canvas id="myCanvas" width="320" height="240" style="display: none"></canvas>
+  <canvas id="enemyCanvas" width="320" height="240" style="display: none"></canvas>
 
   <canvas id="mySphere" width= "320" height= "240" style = "position: absolute; left:50; top: 10"></canvas>
   <canvas id="enemySphere" width= "320" height= "240" style = "position: absolute; left:370; top: 10"></canvas>

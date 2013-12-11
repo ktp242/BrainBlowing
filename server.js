@@ -66,10 +66,15 @@ io.sockets.on('connection',
 			socket.broadcast.emit('peerId',newPeerId,previousPeerId);
 		});
 
-      socket.on('doKeyDown', function (youWereBlown) {
-			console.log(youWereBlown);
-			socket.emit('enemyAttack', youWereBlown);		
+      socket.on('attacking', function (aBlow) {
+			console.log(aBlow);
+			socket.emit('enemyAttack', aBlow);		
 		});
+
+  //      socket.on('doKeyDown', function (youWereBlown) {
+		// 	console.log(youWereBlown);
+		// 	socket.emit('Attacked', youWereBlown);		
+		// });
 
 
   // Once the client has left
